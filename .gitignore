@@ -1,0 +1,11 @@
+
+*.o
+server
+client
+*.sublime-project
+*.sublime-workspace
+/.vscode
+play
+addr
+logs
+*.bin
