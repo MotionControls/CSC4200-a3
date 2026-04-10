@@ -1,43 +1,8 @@
 #include "protocol.h"
 
-/*	GetFileContents(buffer, file)
-	Puts the raw contents of file into buffer.
-	Returns the size of the file in bytes.
-*/
-size_t GetFileContents(void** buffer, char* path){
-	FILE* file;
-	file = fopen(path, "rb");
-	fseek(file, 0L, SEEK_END);
-	size_t size = ftell(file);
-	rewind(file);
-
-	printf("Reading %li bytes from %s.\n", size, path);
-
-	char temp[strlen(path)];
-	strcpy(temp, path);
-	char* base = basename(temp);
-	char* front = "FILENAME:";
-
-	char final[strlen(front) + strlen(base)];
-	strcpy(final, front);
-	strcat(final, base);
-	size_t totalSize = size + strlen(final);
-	
-	*buffer = malloc(totalSize);
-	strcpy(*buffer, final);
-
-	size_t got = fread(*buffer + strlen(final) + 1, sizeof(uint8_t), size, file);
-	printf("\tRead %li of %li bytes.\n", got, size);
-	if(ferror(file) || got != size){
-		perror("fread err");
-		exit(errno);
-	}
-
-	return totalSize;
-}
-
-/*	SetupSocket(...)
-...
+/*	SetupServerSocket(addr, port)
+	Setups a server socket.
+	Returns socket.
 */
 int SetupServerSocket(char* addr, char* port){
 	// Setup addr.
@@ -89,16 +54,19 @@ int SetupServerSocket(char* addr, char* port){
 	
 	printf("Socket setup for %s:%s.\n", inet_ntop(cur->ai_family, &(((struct sockaddr_in*)(cur->ai_addr))->sin_addr), foundAddr, INET_ADDRSTRLEN), port);
 
-	FILE* file;
-	file = fopen("addr", "w");
-	fprintf(file, foundAddr);
-	fclose(file);
+	// Here for localhost debugging.
+	if(strcmp(addr, "localhost") == 0 || strcmp(addr, "127.0.0.1") == 0){
+		FILE* file;
+		file = fopen("addr", "w");
+		fprintf(file, foundAddr);
+		fclose(file);
+	}
 	
 	return sock;
 }
 
-/*	MakePacket(...)
-...
+/*	MakePacket(seq, ack, payload, length, flags)
+	Returns a packet struct.
 */
 Packet MakePacket(uint32_t seq, uint32_t ack, void* payload, uint32_t length, uint32_t flags){
 	Packet packet;
@@ -113,7 +81,6 @@ Packet MakePacket(uint32_t seq, uint32_t ack, void* payload, uint32_t length, ui
 
 /*	PacketSerialize(packet);
 	Morphs packet into byte array.
-packet 	; Packet.
 */
 void PacketSerialize(uint32_t* buffer, Packet packet){
 	uint32_t seq = htonl(packet.seq);
@@ -130,7 +97,7 @@ void PacketSerialize(uint32_t* buffer, Packet packet){
 
 /*	PacketDeserialize(buffer)
 	Morphs buffer into packet struct.
-buffer	;	Byte buffer.
+	Returns packet struct.
 */
 Packet PacketDeserialize(uint32_t* buffer){
 	uint32_t seq = ntohl(buffer[0]);
@@ -146,6 +113,11 @@ Packet PacketDeserialize(uint32_t* buffer){
 	return MakePacket(seq, ack, ptr, length, flags);
 }
 
+/*	HeaderDeserialize(buffer)
+	Gets header from buffer for reading length.
+	Should probably just make a function for length.
+	Returns packet struct.
+*/
 Packet HeaderDeserialize(uint32_t* buffer){
 	uint32_t seq = ntohl(buffer[0]);
 	uint32_t ack = ntohl(buffer[1]);
@@ -156,13 +128,12 @@ Packet HeaderDeserialize(uint32_t* buffer){
 	return MakePacket(seq, ack, &payload, length, flags);
 }
 
-/*	LogPacket(log, packet)
+/*	LogPacket(log, recv, packet)
 	Logs a packet in the following format:
 		[YYYY-MM-DD-HH-MM-SS] SEND|RECV  SEQ=<n> ACK=<n> [ACK] [SYN] [FIN] [LEN=<n>]
 	Returns 1 on success, 0 otherwise.
 log 	;	Logfile path.
 recv	;	Assumes RECV if >0, SEND otherwise.
-packet  ;	Packet.
 */
 int LogPacket(char* log, int recv, Packet packet){
 	FILE* file;
@@ -204,6 +175,10 @@ char* Timestamp(){
 	return buffer;
 }
 
+/*	GetBuffer(info, infolen, buffer, sock)
+	Gets a buffer from info.
+	Returns number of bytes received.
+*/
 int GetBuffer(struct sockaddr_storage* info, socklen_t* infolen, uint32_t* buffer, int sock){
 	int numbytes = 0;
 	int size = PACKET_SIZE;
@@ -235,6 +210,10 @@ int GetBuffer(struct sockaddr_storage* info, socklen_t* infolen, uint32_t* buffe
 	return numbytes;
 }
 
+/*	SendBuffer(info, buffer, sock, size)
+	Sends a buffer to info.
+	Returns number of bytes sent.
+*/
 int SendBuffer(struct sockaddr* info, void* buffer, int sock, int size){
 	int numbytes = 0;
 	do{
@@ -252,6 +231,11 @@ int SendBuffer(struct sockaddr* info, void* buffer, int sock, int size){
 	return numbytes;
 }
 
+/*	CheckRecv(numbytes, size)
+	Checks numbytes against size.
+	Could probably be combined with CheckSend.
+	Returns true if error, false otherwise.
+*/
 bool CheckRecv(int numbytes, int size){
 	if(numbytes < size){
 		printf("\tReceived %u bytes.\n", numbytes);
@@ -261,6 +245,11 @@ bool CheckRecv(int numbytes, int size){
 	return false;
 }
 
+/*	CheckSend(numbytes, size)
+	Checks numbytes against size.
+	Could probably be combined with CheckRecv.
+	Returns true if error, false otherwise.
+*/
 bool CheckSend(int numbytes, int size){
 	if(numbytes < size){
 		printf("\tSent %u bytes.\n", numbytes);

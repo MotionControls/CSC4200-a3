@@ -51,15 +51,14 @@
  */
 
 #define HEADER_SIZE		sizeof(uint32_t)*4
-#define PACKET_SIZE		212992
-#define SPLITE_SIZE		PACKET_SIZE/4
-#define FILESTR_SIZE	strlen("FILENAME:")
+#define PACKET_SIZE		212992				// Magic UNIX number.
+#define SPLIT_SIZE		PACKET_SIZE/4
 
 #define FLAG_FIN	0b001
 #define FLAG_SYN	0b010
 #define FLAG_ACK	0b100
 
-#define TIMEOUT_SEC		10
+#define TIMEOUT_SEC		2
 #define TIMEOUT_USEC	0
 #define MAX_RETRIES		5
 
@@ -74,9 +73,6 @@ typedef struct{
 // Setup.
 int SetupServerSocket(char* addr, char* port);
 int SetupClientSocket(struct addrinfo* info, char* addr, char* port);
-
-// File I/O.
-size_t GetFileContents(void** buffer, char* file);
 
 // Packets.
 Packet MakePacket(uint32_t seq, uint32_t ack, void* payload, uint32_t length, uint32_t flags);

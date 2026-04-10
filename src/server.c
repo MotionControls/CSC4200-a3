@@ -96,14 +96,12 @@ int main(int argc, char** argv){
 		};
 		if(tries >= MAX_RETRIES) continue;
 
-		printf("Handshake complete.\nWaiting for data...\n");
+		printf("Handshake complete.\n");
 
 		// Data packets.
 		uint32_t exSeq = theirIsn + 1;
 		int packets = 0;
 		bool finished = false;
-		FILE* download;
-		bool doTestInterrupt = false;
 		do{
 			buffer = realloc(buffer, PACKET_SIZE);
 			numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
@@ -116,12 +114,6 @@ int main(int argc, char** argv){
 				continue;
 			}
 
-			if(doTestInterrupt && packets == 2){
-				printf("**********Test Interrupt**********\n");
-				doTestInterrupt = false;
-				continue;
-			}
-			
 			if(packet.flags == FLAG_FIN){
 				printf("Got FIN at packet %i.\n", packets);
 
@@ -134,27 +126,9 @@ int main(int argc, char** argv){
 				LogFinish(logPath, theirAddr);
 				finished = true;
 			}else{
-				uint8_t* writePtr;
-				size_t writeSize;
-				if(packets == 0){
-					// Get filename.
-					size_t nameSize = strlen((char*)(packet.payload));
-					char* front = "downloads/";
-					char nameBuffer[strlen(front) + nameSize];
-					strcpy(nameBuffer, front);
-					strcat(nameBuffer, (char*)(packet.payload + FILESTR_SIZE));
-					printf("Recieving %s to %s\n", (char*)(packet.payload + FILESTR_SIZE), nameBuffer);
-
-					// Open file.
-					download = fopen(nameBuffer, "wb");
-
-					// Store payload.
-					writePtr = packet.payload + nameSize + 1;
-					writeSize = packet.length - nameSize - 1;
-				}else{
-					writePtr = packet.payload;
-					writeSize = packet.length;
-				}
+				/*
+					Do stuff with data packet here.
+				*/
 
 				// Send ACK.
 				printf("Sending ACK %i.\n", packets);
@@ -165,7 +139,6 @@ int main(int argc, char** argv){
 				if(CheckSend(numbytes, HEADER_SIZE)) continue;
 				LogPacket(logPath, 0, ackPacket);
 
-				fwrite(writePtr, sizeof(uint8_t), writeSize, download);
 				exSeq += packet.length;
 				packets++;
 			}
