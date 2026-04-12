@@ -1,20 +1,36 @@
 #include "../include/protocol.h"
 
 int main(int argc, char** argv){
-	if(argc < 5) return 1;
-	
 	// Get args.
+	// https://man7.org/linux/man-pages/man3/getopt.3.html
 	char* port, *logPath;
-	for(int i = 1; i < argc; i += 2){
-		if(strcmp(argv[i], "-p") == 0){
-			port = argv[i+1];
-		}else if(strcmp(argv[i], "-s") == 0){
-			logPath = argv[i+1];
+
+	bool havePort = false;
+	bool haveLog = false;
+	int opt;
+	while((opt = getopt(argc, argv, "p:s:")) != -1){
+		switch(opt){
+			case 'p':
+				port = optarg;
+				int temp = atoi(port);
+				if(temp < 1 || temp > 65535){
+					printf("Port must be between 1 and 65535.\n");
+					return 1;
+				}
+				havePort = true;
+				break;
+			case 's':
+				logPath = optarg;
+				haveLog = true;
+				break;
+			default:
+				printf("Unknown arg %c.\n", opt);
+				return 1;
 		}
 	}
 
-	if(port == NULL || logPath == NULL){
-		printf("Setup err: Missing args.\n");
+	if(!havePort || !haveLog){
+		printf("Missing args.\n");
 		return 1;
 	}
 	
@@ -29,8 +45,8 @@ int main(int argc, char** argv){
 	uint32_t theirIsn;
 	uint32_t* buffer;
 	while(1){
-		struct timeval opt = {0,0};
-		if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &opt, sizeof(opt)) == -1){
+		struct timeval timeOpt = {0,0};
+		if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
 			perror("setsockopt err");
 			return errno;
 		}
@@ -67,8 +83,8 @@ int main(int argc, char** argv){
 				continue;
 			}
 			
-			opt = (struct timeval){0,0};
-			if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &opt, sizeof(opt)) == -1){
+			timeOpt = (struct timeval){0,0};
+			if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
 				perror("setsockopt err");
 				return errno;
 			}
@@ -77,8 +93,8 @@ int main(int argc, char** argv){
 			if(CheckSend(numbytes, HEADER_SIZE + synackPacket.length)) continue;
 			LogPacket(logPath, 0, synackPacket);
 
-			opt = (struct timeval){TIMEOUT_SEC, TIMEOUT_SEC};
-			if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &opt, sizeof(opt)) == -1){
+			timeOpt = (struct timeval){TIMEOUT_SEC, TIMEOUT_SEC};
+			if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
 				perror("setsockopt err");
 				return errno;
 			}
@@ -143,7 +159,6 @@ int main(int argc, char** argv){
 				packets++;
 			}
 		}while(!finished);
-		fclose(download);
 
 		printf("Waiting for next client...\n");
 		selfIsn = (uint32_t)rand();

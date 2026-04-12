@@ -1,22 +1,35 @@
 #include "../include/protocol.h"
 
 int main(int argc, char** argv){
-	if(argc < 7) return 1;
-	
 	// Get args.
 	char* port, *logPath, *serverIp;
-	for(int i = 1; i < argc; i += 2){
-		if(strcmp(argv[i], "-p") == 0){
-			port = argv[i+1];
-		}else if(strcmp(argv[i], "-l") == 0){
-			logPath = argv[i+1];
-		}else if(strcmp(argv[i], "-s") == 0){
-			serverIp = argv[i+1];
+	
+	bool havePort = false;
+	bool haveLog = false;
+	bool haveIP = false;
+	int opt;
+	while((opt = getopt(argc, argv, "p:l:s:")) != -1){
+		switch(opt){
+			case 'p':
+				port = optarg;
+				havePort = true;
+				break;
+			case 'l':
+				logPath = optarg;
+				haveLog = true;
+				break;
+			case 's':
+				serverIp = optarg;
+				haveIP = true;
+				break;
+			default:
+				printf("Unknown arg %c.\n", opt);
+				return 1;
 		}
 	}
 
-	if(port == NULL || serverIp == NULL || logPath == NULL){
-		printf("Setup err: Missing args.\n");
+	if(!havePort || !haveLog || !haveIP){
+		printf("Missing args.\n");
 		return 1;
 	}
 	
@@ -49,8 +62,8 @@ int main(int argc, char** argv){
 	printf("Socket setup for %s.\n", inet_ntop(theirAddr->ai_family, &(((struct sockaddr_in*)(theirAddr->ai_addr))->sin_addr), foundAddr, INET_ADDRSTRLEN));
 	
 	// SYN+ACK packets.
-	struct timeval opt = {TIMEOUT_SEC, TIMEOUT_SEC};
-	if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &opt, sizeof(opt)) == -1){
+	struct timeval timeOpt = {TIMEOUT_SEC, TIMEOUT_SEC};
+	if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
 		perror("setsockopt err");
 		return errno;
 	}
