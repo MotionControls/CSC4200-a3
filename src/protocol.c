@@ -128,6 +128,31 @@ Packet HeaderDeserialize(uint32_t* buffer){
 	return MakePacket(seq, ack, &payload, length, flags);
 }
 
+/*	PackBlink(payload, duration, times)
+	Packs duration and times into payload.
+*/
+void PackBlink(void* payload, uint16_t duration, uint16_t times){
+	uint32_t durPack = htonl(duration);
+	uint32_t timesPack = htonl(times);
+	memcpy(payload, &durPack, sizeof(uint16_t));
+	memcpy(payload + sizeof(uint16_t), &durPack, sizeof(uint16_t));
+}
+
+/*	UnpackBlink(payload, durPtr, timesPtr)
+	Unpacks duration and times into respective variables.
+*/
+void UnpackBlink(uint16_t* payload, uint16_t* durPtr, uint16_t* timesPtr){
+	/* TODO */
+}
+
+/*	PackMotion(payload)
+	Packs motion notification into payload.
+*/
+void PackMotion(void* payload){
+	char* notif = ":MotionDetected";
+	strcpy((char*)payload, notif);
+}
+
 /*	LogPacket(log, recv, packet)
 	Logs a packet in the following format:
 		[YYYY-MM-DD-HH-MM-SS] SEND|RECV  SEQ=<n> ACK=<n> [ACK] [SYN] [FIN] [LEN=<n>]

@@ -11,6 +11,7 @@
 #include <time.h>
 #include <libgen.h>
 #include <math.h>
+#include <getopt.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -76,6 +77,9 @@ int SetupClientSocket(struct addrinfo* info, char* addr, char* port);
 
 // Packets.
 Packet MakePacket(uint32_t seq, uint32_t ack, void* payload, uint32_t length, uint32_t flags);
+void PackBlink(void* payload, uint16_t duration, uint16_t times);
+void PackMotion(void* payload);
+void UnpackBlink(void* payload, uint16_t* durPtr, uint16_t* timesPtr);
 void PacketSerialize(uint32_t* buffer, Packet packet);
 Packet PacketDeserialize(uint32_t* buffer);
 Packet HeaderDeserialize(uint32_t* buffer);
