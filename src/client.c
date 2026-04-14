@@ -118,9 +118,33 @@ int main(int argc, char** argv){
 
 	printf("Handshake complete.\n");
 
-	/*
-		Loop send data packets here.
-	*/
+	// Send blink params.
+	void* blinkParams = malloc(BLINK_SIZE);
+	uint16_t duration = 1000;
+	uint16_t times = 5;
+	PackBlink(blinkParams, duration, times);
+	Packet blinkPacket = MakePacket(0, 0, blinkParams, BLINK_SIZE, 0);
+	buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
+	PacketSerialize(buffer, blinkPacket);
+	numbytes = SendBuffer((struct sockaddr*)theirAddr->ai_addr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
+	if(CheckSend(numbytes, HEADER_SIZE + BLINK_SIZE)) return errno;
+	LogPacket(logPath, 0, blinkPacket);
+
+	// Get ACK.
+	buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
+	numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
+	if(CheckRecv(numbytes, HEADER_SIZE + BLINK_SIZE)) return errno;
+
+	Packet blinkAckPacket = PacketDeserialize(buffer);
+	if(blinkAckPacket.flags != FLAG_ACK) return 1;
+	LogPacket(logPath, 1, blinkAckPacket);
+
+	uint16_t recvDur, recvTimes;
+	UnpackBlink(blinkAckPacket.payload, &recvDur, &recvTimes);
+	if(recvDur != duration || recvTimes != times){
+		printf("UnpackBlink err: Params do not match sent.\n");
+		return 1;
+	}
 
 	// Send FIN.
 	printf("Sending FIN...\n");

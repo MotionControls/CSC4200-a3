@@ -44,6 +44,8 @@ int main(int argc, char** argv){
 	uint32_t selfIsn = (uint32_t)rand();
 	uint32_t theirIsn;
 	uint32_t* buffer;
+	uint16_t blinks = 0;
+	uint16_t duration = 0;
 	while(1){
 		struct timeval timeOpt = {0,0};
 		if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
@@ -113,6 +115,24 @@ int main(int argc, char** argv){
 		if(tries >= MAX_RETRIES) continue;
 
 		printf("Handshake complete.\n");
+
+		// Get blink params.
+		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
+		numbytes = GetBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
+		if(CheckRecv(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
+
+		Packet blinkPacket = PacketDeserialize(buffer);
+		LogPacket(logPath, 1, blinkPacket);
+		UnpackBlink(blinkPacket.payload, &duration, &blinks);
+		printf("Blink params set: %u blinks for %ums.", blinks, duration);
+
+		// ACK blink params.
+		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
+		Packet blinkAckPacket = blinkPacket;
+		blinkAckPacket.flags = FLAG_ACK;
+		PacketSerialize(buffer, blinkAckPacket);
+		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
+		if(CheckSend(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
 
 		// Data packets.
 		uint32_t exSeq = theirIsn + 1;

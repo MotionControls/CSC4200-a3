@@ -54,6 +54,7 @@
 #define HEADER_SIZE		sizeof(uint32_t)*4
 #define PACKET_SIZE		212992				// Magic UNIX number.
 #define SPLIT_SIZE		PACKET_SIZE/4
+#define BLINK_SIZE		sizeof(uint16_t)*2
 
 #define FLAG_FIN	0b001
 #define FLAG_SYN	0b010
