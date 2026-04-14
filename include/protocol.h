@@ -63,6 +63,9 @@
 #define TIMEOUT_USEC	0
 #define MAX_RETRIES		5
 
+static const char* MOTION_MSG = ":MotionDetected";
+static const size_t MOTION_MSG_LEN = sizeof(":MotionDetected") - 1;
+
 typedef struct{
 	uint32_t seq;
 	uint32_t ack;
