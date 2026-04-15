@@ -118,13 +118,13 @@ int main(int argc, char** argv){
 
 		// Get blink params.
 		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
-		numbytes = GetBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
+		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
 
 		Packet blinkPacket = PacketDeserialize(buffer);
 		LogPacket(logPath, 1, blinkPacket);
 		UnpackBlink(blinkPacket.payload, &duration, &blinks);
-		printf("Blink params set: %u blinks for %ums.", blinks, duration);
+		printf("Blink params set: %u blinks for %ums\n.", blinks, duration);
 
 		// ACK blink params.
 		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
@@ -133,53 +133,53 @@ int main(int argc, char** argv){
 		PacketSerialize(buffer, blinkAckPacket);
 		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
 		if(CheckSend(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
+		LogPacket(logPath, 0, blinkAckPacket);
 
-		// Data packets.
-		uint32_t exSeq = theirIsn + 1;
-		int packets = 0;
-		bool finished = false;
-		do{
-			buffer = realloc(buffer, PACKET_SIZE);
-			numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
-			if(CheckRecv(numbytes, HEADER_SIZE)) continue;
+		// Wait for motion.
+		buffer = realloc(buffer, HEADER_SIZE + MOTION_MSG_LEN);
+		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
+		if(CheckRecv(numbytes, HEADER_SIZE + MOTION_MSG_LEN)) continue;
 
-			Packet packet = PacketDeserialize(buffer);
-			LogPacket(logPath, 1, packet);
-			if(packet.seq != exSeq){
-				printf("Packet SEQ not %i.\n", exSeq);
-				continue;
-			}
+		Packet packet = PacketDeserialize(buffer);
+		LogPacket(logPath, 1, packet);
+		if(strcmp((char*)packet.payload, MOTION_MSG) != 0){
+			printf("Incorrect msg: %s.\n", (char*)packet.payload);
+			continue;
+		}
+		
+		/*
+			Blink mf.
+		*/
 
-			if(packet.flags == FLAG_FIN){
-				printf("Got FIN at packet %i.\n", packets);
+		// Send ACK.
+		printf("Sending ACK.\n");
+		Packet ackPacket = MakePacket(0, 0, 0, 0, FLAG_ACK);
+		buffer = realloc(buffer, HEADER_SIZE);
+		PacketSerialize(buffer, ackPacket);
+		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
+		if(CheckSend(numbytes, HEADER_SIZE)) continue;
+		LogPacket(logPath, 0, ackPacket);
 
-				Packet finackPacket = MakePacket(0, packet.seq + 1, 0, 0, FLAG_FIN | FLAG_ACK);
-				buffer = realloc(buffer, HEADER_SIZE);
-				PacketSerialize(buffer, finackPacket);
-				numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
-				if(CheckSend(numbytes, HEADER_SIZE)) continue;
+		// Get FIN.
+		buffer = realloc(buffer, HEADER_SIZE);
+		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
+		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
 
-				LogFinish(logPath, theirAddr);
-				finished = true;
-			}else{
-				/*
-					Do stuff with data packet here.
-				*/
+		Packet finPacket = PacketDeserialize(buffer);
+		LogPacket(logPath, 1, finPacket);
+		if(finPacket.flags != FLAG_FIN){
+			printf("Incorrect FIN.\n");
+			continue;
+		}
 
-				// Send ACK.
-				printf("Sending ACK %i.\n", packets);
-				Packet ackPacket = MakePacket(0, exSeq + packet.length, 0, 0, FLAG_ACK);
-				buffer = realloc(buffer, HEADER_SIZE);
-				PacketSerialize(buffer, ackPacket);
-				numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
-				if(CheckSend(numbytes, HEADER_SIZE)) continue;
-				LogPacket(logPath, 0, ackPacket);
+		// Send FIN+ACK.
+		Packet finackPacket = MakePacket(0, 0, 0, 0, FLAG_FIN | FLAG_ACK);
+		buffer = realloc(buffer, HEADER_SIZE);
+		PacketSerialize(buffer, finackPacket);
+		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
+		if(CheckSend(numbytes, HEADER_SIZE)) continue;
 
-				exSeq += packet.length;
-				packets++;
-			}
-		}while(!finished);
-
+		LogFinish(logPath, theirAddr);
 		printf("Waiting for next client...\n");
 		selfIsn = (uint32_t)rand();
 	}

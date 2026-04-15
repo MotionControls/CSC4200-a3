@@ -123,6 +123,7 @@ int main(int argc, char** argv){
 	uint16_t duration = 1000;
 	uint16_t times = 5;
 	PackBlink(blinkParams, duration, times);
+	
 	Packet blinkPacket = MakePacket(0, 0, blinkParams, BLINK_SIZE, 0);
 	buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
 	PacketSerialize(buffer, blinkPacket);
@@ -146,6 +147,16 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
+	printf("Waiting for motion...\n");
+	/* Block for motion. */
+	// TEMP Test.
+	Packet motionPacket = MakePacket(curSeq, 0, MOTION_MSG, MOTION_MSG_LEN, 0);
+	buffer = realloc(buffer, HEADER_SIZE + MOTION_MSG_LEN);
+	PacketSerialize(buffer, motionPacket);
+	numbytes = SendBuffer((struct sockaddr*)theirAddr->ai_addr, buffer, sock, HEADER_SIZE + MOTION_MSG_LEN);
+	if(CheckSend(numbytes, HEADER_SIZE + MOTION_MSG_LEN)) return errno;
+	LogPacket(logPath, 0, motionPacket);
+
 	// Send FIN.
 	printf("Sending FIN...\n");
 	transFail = true;
@@ -162,7 +173,7 @@ int main(int argc, char** argv){
 		numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
 		Packet finackPacket = PacketDeserialize(buffer);
-		if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
+		//if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
 		LogPacket(logPath, 1, finackPacket);
 		
 		printf("Connection closed cleanly.\n");
