@@ -120,7 +120,7 @@ int main(int argc, char** argv){
 
 	// Send blink params.
 	void* blinkParams = malloc(BLINK_SIZE);
-	uint16_t duration = 1000;
+	uint16_t duration = BLINK_DURATION;
 	uint16_t times = 5;
 	PackBlink(blinkParams, duration, times);
 	

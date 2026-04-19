@@ -171,8 +171,10 @@ int main(int argc, char** argv){
 
 		for(int ii = 0; ii < (int)blinks; ii++){
 			digitalWrite(LED_WPI_PIN, HIGH);
+			printf("LED ON\n");
 			delay((unsigned int)duration);
 			digitalWrite(LED_WPI_PIN, LOW);
+			printf("LED OFF\n");
 			delay((unsigned int)duration);
 		}
 
