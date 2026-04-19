@@ -124,12 +124,13 @@ int main(int argc, char** argv){
 	uint16_t times = 5;
 	PackBlink(blinkParams, duration, times);
 	
-	Packet blinkPacket = MakePacket(0, 0, blinkParams, BLINK_SIZE, 0);
+	Packet blinkPacket = MakePacket(curSeq, 0, blinkParams, BLINK_SIZE, 0);
 	buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
 	PacketSerialize(buffer, blinkPacket);
 	numbytes = SendBuffer((struct sockaddr*)theirAddr->ai_addr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
 	if(CheckSend(numbytes, HEADER_SIZE + BLINK_SIZE)) return errno;
 	LogPacket(logPath, 0, blinkPacket);
+	curSeq += numbytes;
 
 	// Get ACK.
 	buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
@@ -137,7 +138,10 @@ int main(int argc, char** argv){
 	if(CheckRecv(numbytes, HEADER_SIZE + BLINK_SIZE)) return errno;
 
 	Packet blinkAckPacket = PacketDeserialize(buffer);
-	if(blinkAckPacket.flags != FLAG_ACK) return 1;
+	if(blinkAckPacket.flags != FLAG_ACK || blinkAckPacket.ack != curSeq){
+		printf("recv err: Expected SEQ %i, got %i.", curSeq, blinkAckPacket.ack);
+		return 1;
+	}
 	LogPacket(logPath, 1, blinkAckPacket);
 
 	uint16_t recvDur, recvTimes;
@@ -156,6 +160,7 @@ int main(int argc, char** argv){
 	numbytes = SendBuffer((struct sockaddr*)theirAddr->ai_addr, buffer, sock, HEADER_SIZE + MOTION_MSG_LEN);
 	if(CheckSend(numbytes, HEADER_SIZE + MOTION_MSG_LEN)) return errno;
 	LogPacket(logPath, 0, motionPacket);
+	curSeq += numbytes;
 
 	// Send FIN.
 	printf("Sending FIN...\n");
@@ -173,7 +178,7 @@ int main(int argc, char** argv){
 		numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
 		Packet finackPacket = PacketDeserialize(buffer);
-		//if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
+		if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
 		LogPacket(logPath, 1, finackPacket);
 		
 		printf("Connection closed cleanly.\n");

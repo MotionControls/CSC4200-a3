@@ -40,13 +40,14 @@ int main(int argc, char** argv){
 	srand((unsigned)time(NULL) ^ getpid());
 	
 	int sock = SetupServerSocket("localhost", port);
-	
-	uint32_t selfIsn = (uint32_t)rand();
-	uint32_t theirIsn;
-	uint32_t* buffer;
-	uint16_t blinks = 0;
-	uint16_t duration = 0;
+	uint32_t* buffer = malloc(PACKET_SIZE);
 	while(1){
+		uint32_t selfIsn = (uint32_t)rand();
+		int curSeq;
+		uint32_t theirIsn;
+		uint16_t blinks = 0;
+		uint16_t duration = 0;
+			
 		struct timeval timeOpt = {0,0};
 		if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeOpt, sizeof(timeOpt)) == -1){
 			perror("setsockopt err");
@@ -57,7 +58,7 @@ int main(int argc, char** argv){
 		socklen_t theirSize = sizeof(*theirAddr);
 		
 		// SYN+ACK packets.
-		buffer = malloc(PACKET_SIZE);
+		buffer = realloc(buffer, PACKET_SIZE);
 		int numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
 		if(CheckSend(numbytes, HEADER_SIZE)) continue;
 
@@ -71,7 +72,7 @@ int main(int argc, char** argv){
 		LogPacket(logPath, 1, synPacket);
 		printf("Recieved SYN.\nSending ACK...\n");
 
-		Packet synackPacket = MakePacket(selfIsn, synPacket.seq + 1, 0, 0, FLAG_ACK | FLAG_SYN);
+		Packet synackPacket = MakePacket(selfIsn, theirIsn + 1, 0, 0, FLAG_ACK | FLAG_SYN);
 		buffer = realloc(buffer, HEADER_SIZE + synackPacket.length);
 		PacketSerialize(buffer, synackPacket);
 
@@ -113,6 +114,7 @@ int main(int argc, char** argv){
 			LogPacket(logPath, 1, ackPacket);
 		};
 		if(tries >= MAX_RETRIES) continue;
+		curSeq = theirIsn + 1;
 
 		printf("Handshake complete.\n");
 
@@ -120,6 +122,7 @@ int main(int argc, char** argv){
 		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
 		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
+		curSeq += numbytes;
 
 		Packet blinkPacket = PacketDeserialize(buffer);
 		LogPacket(logPath, 1, blinkPacket);
@@ -130,6 +133,7 @@ int main(int argc, char** argv){
 		buffer = realloc(buffer, HEADER_SIZE + BLINK_SIZE);
 		Packet blinkAckPacket = blinkPacket;
 		blinkAckPacket.flags = FLAG_ACK;
+		blinkAckPacket.ack = curSeq;
 		PacketSerialize(buffer, blinkAckPacket);
 		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE + BLINK_SIZE);
 		if(CheckSend(numbytes, HEADER_SIZE + BLINK_SIZE)) continue;
@@ -139,11 +143,14 @@ int main(int argc, char** argv){
 		buffer = realloc(buffer, HEADER_SIZE + MOTION_MSG_LEN);
 		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE + MOTION_MSG_LEN)) continue;
+		curSeq += numbytes;
 
 		Packet packet = PacketDeserialize(buffer);
 		LogPacket(logPath, 1, packet);
-		if(strcmp((char*)packet.payload, MOTION_MSG) != 0){
-			printf("Incorrect msg: %s.\n", (char*)packet.payload);
+		char motionRecv[MOTION_MSG_LEN];
+		memcpy(motionRecv, (char*)packet.payload, MOTION_MSG_LEN);	// We love band-aids.
+		if(strcmp(motionRecv, MOTION_MSG) != 0){
+			printf("payload err: Expected \"%s\", got \"%s\".\n", MOTION_MSG, (char*)packet.payload);
 			continue;
 		}
 		
@@ -153,12 +160,13 @@ int main(int argc, char** argv){
 
 		// Send ACK.
 		printf("Sending ACK.\n");
-		Packet ackPacket = MakePacket(0, 0, 0, 0, FLAG_ACK);
+		Packet ackPacket = MakePacket(selfIsn, curSeq, 0, 0, FLAG_ACK);
 		buffer = realloc(buffer, HEADER_SIZE);
 		PacketSerialize(buffer, ackPacket);
 		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
 		if(CheckSend(numbytes, HEADER_SIZE)) continue;
 		LogPacket(logPath, 0, ackPacket);
+		curSeq++;
 
 		// Get FIN.
 		buffer = realloc(buffer, HEADER_SIZE);
@@ -173,7 +181,7 @@ int main(int argc, char** argv){
 		}
 
 		// Send FIN+ACK.
-		Packet finackPacket = MakePacket(0, 0, 0, 0, FLAG_FIN | FLAG_ACK);
+		Packet finackPacket = MakePacket(0, curSeq, 0, 0, FLAG_FIN | FLAG_ACK);
 		buffer = realloc(buffer, HEADER_SIZE);
 		PacketSerialize(buffer, finackPacket);
 		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
@@ -181,7 +189,6 @@ int main(int argc, char** argv){
 
 		LogFinish(logPath, theirAddr);
 		printf("Waiting for next client...\n");
-		selfIsn = (uint32_t)rand();
 	}
 
 	printf("Exiting...\n");
