@@ -166,12 +166,12 @@ int main(int argc, char** argv){
 		numbytes = SendBuffer((struct sockaddr*)theirAddr, buffer, sock, HEADER_SIZE);
 		if(CheckSend(numbytes, HEADER_SIZE)) continue;
 		LogPacket(logPath, 0, ackPacket);
-		curSeq++;
 
 		// Get FIN.
 		buffer = realloc(buffer, HEADER_SIZE);
 		numbytes = GetBuffer(theirAddr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
+		curSeq++;
 
 		Packet finPacket = PacketDeserialize(buffer);
 		LogPacket(logPath, 1, finPacket);
