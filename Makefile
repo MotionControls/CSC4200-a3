@@ -2,7 +2,7 @@ CC      = gcc
 #CFLAGS  = -Wall -Wextra -g -Iinclude
 CFLAGS  = -Wall -Wextra -Wno-error=incompatible-pointer-types -g -Iinclude -ggdb3
 #LDFLAGS =
-LDFLAGS = -lm
+LDFLAGS = -lm -lwiringPi
 
 OBJ_DIR = obj
 SRC     = src
@@ -21,7 +21,7 @@ helper:
 	clear
 
 server: $(SRC)/server.c $(OBJ_DIR)/protocol.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lwiringPi
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) 
 
 client: $(SRC)/client.c $(OBJ_DIR)/protocol.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
