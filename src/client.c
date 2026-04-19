@@ -163,7 +163,7 @@ int main(int argc, char** argv){
 	curSeq += numbytes;
 
 	// Recv. motion FIN.
-	printf();
+	// TODO
 
 	// Send FIN.
 	printf("Sending FIN...\n");
