@@ -157,6 +157,15 @@ int main(int argc, char** argv){
 		/*
 			Blink mf.
 		*/
+		if(strcmp(motionRecv, MOTION_MSG) == 0){
+			for (int ii = 0 ; ii < blinks; ii++) {
+			GPIO.output(17, GPIO.HIGH) # LED ON (3.3 V)
+			sleep(duration);
+			GPIO.output(17, GPIO.LOW); # LED OFF (0 V)
+			sleep(duration);
+			}
+			}
+
 
 		// Send ACK.
 		printf("Sending ACK.\n");
