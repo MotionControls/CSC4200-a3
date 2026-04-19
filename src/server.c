@@ -1,5 +1,4 @@
 #include "../include/protocol.h"
-#include <wiringPi.h>
 
 // WiringPi Pin 0 maps to Physical Pin 11 (BCM GPIO 17)
 #define LED_PIN 0

@@ -1,5 +1,4 @@
 #include "../include/protocol.h"
-#include <wiringPi.h>
 
 // WiringPi Pin 7 maps to Physical Pin 7 (BCM GPIO 4)
 #define PIR_PIN 7
