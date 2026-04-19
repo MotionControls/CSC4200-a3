@@ -1,5 +1,7 @@
 #include "../include/protocol.h"
 
+#define PIR_WPI_PIN 2
+
 int main(int argc, char** argv){
 	// Get args.
 	char* port, *logPath, *serverIp;
@@ -35,6 +37,12 @@ int main(int argc, char** argv){
 	
 	printf("Starting client...\n\tport = %s\n\tIP = %s\n\tlog = %s\n", port, serverIp, logPath);
 	
+	if(wiringPiSetup() == -1){
+		fprintf(stderr, "wiringPiSetup failed\n");
+		return 1;
+	}
+	pinMode(PIR_WPI_PIN, INPUT);
+	digitalWrite(PIR_WPI_PIN, LOW);
 	// Seed rand.
 	srand((unsigned)time(NULL) ^ getpid());
 
@@ -153,6 +161,7 @@ int main(int argc, char** argv){
 
 	printf("Waiting for motion...\n");
 	/* Block for motion. */
+	while(digitalRead(PIR_WPI_PIN) == LOW);
 	// TEMP Test.
 	Packet motionPacket = MakePacket(curSeq, 0, MOTION_MSG, MOTION_MSG_LEN, 0);
 	buffer = realloc(buffer, HEADER_SIZE + MOTION_MSG_LEN);
