@@ -1,33 +1,28 @@
-CC      = gcc
-#CFLAGS  = -Wall -Wextra -g -Iinclude
-CFLAGS  = -Wall -Wextra -g -Iinclude -ggdb3
-#LDFLAGS =
-LDFLAGS = -lm
+CC = gcc
+CFLAGS = -Wall -Wextra -g
+LDFLAGS = -lwiringPi
 
-OBJ_DIR = obj
-SRC     = src
+# Directories
+SRC_DIR = .
+INC_DIR = include
 
-.PHONY: all clean
+# Targets
+all: lightserver lightclient
 
-all: helper server client
+lightserver: server.o protocol.o
+	$(CC) $(CFLAGS) -o lightserver server.o protocol.o $(LDFLAGS)
 
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+lightclient: client.o protocol.o
+	$(CC) $(CFLAGS) -o lightclient client.o protocol.o $(LDFLAGS)
 
-$(OBJ_DIR)/protocol.o: $(SRC)/protocol.c include/protocol.h | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+server.o: $(SRC_DIR)/server.c $(INC_DIR)/protocol.h
+	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/server.c
 
-helper:
-	clear
+client.o: $(SRC_DIR)/client.c $(INC_DIR)/protocol.h
+	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/client.c
 
-server: $(SRC)/server.c $(OBJ_DIR)/protocol.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-client: $(SRC)/client.c $(OBJ_DIR)/protocol.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-play: $(SRC)/playground.c $(OBJ_DIR)/protocol.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+protocol.o: $(SRC_DIR)/protocol.c $(INC_DIR)/protocol.h
+	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/protocol.c
 
 clean:
-	rm -rf $(OBJ_DIR) server client received_* *.log
+	rm -f *.o lightserver lightclient *.log capture.pcap
