@@ -163,7 +163,14 @@ int main(int argc, char** argv){
 	curSeq += numbytes;
 
 	// Recv. motion FIN.
-	// TODO
+	printf("Waiting for motion FIN...\n");
+	buffer = realloc(buffer, HEADER_SIZE);
+	numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
+	if(CheckRecv(numbytes, HEADER_SIZE)) return errno;
+
+	Packet motionAckPacket = PacketDeserialize(buffer);
+	LogPacket(logPath, 1, motionAckPacket);
+	// Do checks.
 
 	// Send FIN.
 	printf("Sending FIN...\n");
@@ -181,8 +188,8 @@ int main(int argc, char** argv){
 		numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
 		Packet finackPacket = PacketDeserialize(buffer);
-		if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq){
-			printf("FIN+ACK flags or SEQ incorrect. Expected ACK %i, got %i.\n", curSeq, finackPacket.ack);
+		if((finackPacket.flags != (FLAG_ACK | FLAG_FIN)) || (finackPacket.ack != curSeq + 1)){
+			printf("FIN+ACK flags or SEQ incorrect. Expected ACK %i, got %i.\n", curSeq + 1, finackPacket.ack);
 			continue;
 		}
 		LogPacket(logPath, 1, finackPacket);
