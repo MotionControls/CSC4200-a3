@@ -213,7 +213,10 @@ int main(int argc, char** argv){
         if(CheckRecv(numbytes, HEADER_SIZE)) continue;
         
         Packet finackPacket = PacketDeserialize(buffer, numbytes);
-        if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
+        if((finackPacket.flags != (FLAG_ACK | FLAG_FIN)) || (finackPacket.ack != curSeq + 1)) {
+			printf("FIN+ACK flags or SEQ incorrect. Expected ACK %i, got %i.\n", curSeq + 1, finackPacket.ack);
+			continue;
+		}
         LogPacket(logPath, 1, finackPacket);
         
         printf("Connection closed cleanly.\n");
