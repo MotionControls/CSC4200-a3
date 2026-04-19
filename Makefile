@@ -1,28 +1,33 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -g
-LDFLAGS = -lwiringPi
+CC      = gcc
+#CFLAGS  = -Wall -Wextra -g -Iinclude
+CFLAGS  = -Wall -Wextra -Wno-error=incompatible-pointer-types -g -Iinclude -ggdb3
+#LDFLAGS =
+LDFLAGS = -lm
 
-# Directories
-SRC_DIR = .
-INC_DIR = include
+OBJ_DIR = obj
+SRC     = src
 
-# Targets
-all: lightserver lightclient
+.PHONY: all clean
 
-lightserver: server.o protocol.o
-	$(CC) $(CFLAGS) -o lightserver server.o protocol.o $(LDFLAGS)
+all: helper server client
 
-lightclient: client.o protocol.o
-	$(CC) $(CFLAGS) -o lightclient client.o protocol.o $(LDFLAGS)
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
-server.o: $(SRC_DIR)/server.c $(INC_DIR)/protocol.h
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/server.c
+$(OBJ_DIR)/protocol.o: $(SRC)/protocol.c include/protocol.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-client.o: $(SRC_DIR)/client.c $(INC_DIR)/protocol.h
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/client.c
+helper:
+	clear
 
-protocol.o: $(SRC_DIR)/protocol.c $(INC_DIR)/protocol.h
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/protocol.c
+server: $(SRC)/server.c $(OBJ_DIR)/protocol.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+client: $(SRC)/client.c $(OBJ_DIR)/protocol.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+play: $(SRC)/playground.c $(OBJ_DIR)/protocol.o
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	rm -f *.o lightserver lightclient *.log capture.pcap
+	rm -rf $(OBJ_DIR) server client received_* *.log
