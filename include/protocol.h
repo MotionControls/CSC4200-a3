@@ -62,7 +62,7 @@
 #define FLAG_SYN	0b010
 #define FLAG_ACK	0b100
 
-#define TIMEOUT_SEC		2
+#define TIMEOUT_SEC		25
 #define TIMEOUT_USEC	0
 #define MAX_RETRIES		5
 
