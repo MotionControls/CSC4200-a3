@@ -162,6 +162,9 @@ int main(int argc, char** argv){
 	LogPacket(logPath, 0, motionPacket);
 	curSeq += numbytes;
 
+	// Recv. motion FIN.
+	printf();
+
 	// Send FIN.
 	printf("Sending FIN...\n");
 	transFail = true;
@@ -178,7 +181,10 @@ int main(int argc, char** argv){
 		numbytes = GetBuffer((struct sockaddr*)theirAddr->ai_addr, &theirSize, buffer, sock);
 		if(CheckRecv(numbytes, HEADER_SIZE)) continue;
 		Packet finackPacket = PacketDeserialize(buffer);
-		if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1) continue;
+		if(finackPacket.flags != (FLAG_ACK | FLAG_FIN) || finackPacket.ack != curSeq + 1){
+			printf("FIN+ACK flags or SEQ incorrect. Expected ACK %i, got %i.\n", curSeq + 1, finackPacket.ack);
+			continue;
+		}
 		LogPacket(logPath, 1, finackPacket);
 		
 		printf("Connection closed cleanly.\n");
