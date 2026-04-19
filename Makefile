@@ -21,7 +21,7 @@ helper:
 	clear
 
 server: $(SRC)/server.c $(OBJ_DIR)/protocol.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) -lwiringPi
 
 client: $(SRC)/client.c $(OBJ_DIR)/protocol.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)

@@ -1,4 +1,8 @@
 #include "../include/protocol.h"
+#include <wiringPi.h>
+
+/* BCM GPIO 17, physical pin 11 — wiringPi pin 0 on standard Pi mapping. */
+#define LED_WPI_PIN 0
 
 int main(int argc, char** argv){
 	// Get args.
@@ -35,6 +39,13 @@ int main(int argc, char** argv){
 	}
 	
 	printf("Starting server...\n\tport = %s\n\tlog = %s\n", port, logPath);
+
+	if(wiringPiSetup() == -1){
+		fprintf(stderr, "wiringPiSetup failed (on Pi run with sudo for GPIO)\n");
+		return 1;
+	}
+	pinMode(LED_WPI_PIN, OUTPUT);
+	digitalWrite(LED_WPI_PIN, LOW);
 
 	// Seed rand.
 	srand((unsigned)time(NULL) ^ getpid());
@@ -157,6 +168,13 @@ int main(int argc, char** argv){
 		/*
 			Blink mf.
 		*/
+
+		for(int ii = 0; ii < (int)blinks; ii++){
+			digitalWrite(LED_WPI_PIN, HIGH);
+			delay((unsigned int)duration);
+			digitalWrite(LED_WPI_PIN, LOW);
+			delay((unsigned int)duration);
+		}
 
 		// Send ACK.
 		printf("Sending ACK.\n");
