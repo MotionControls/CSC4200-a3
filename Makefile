@@ -1,6 +1,6 @@
 CC      = gcc
 #CFLAGS  = -Wall -Wextra -g -Iinclude
-CFLAGS  = -Wall -Wextra -g -Iinclude -ggdb3
+CFLAGS  = -Wall -Wextra -Wno-error=incompatible-pointer-types -g -Iinclude -ggdb3
 #LDFLAGS =
 LDFLAGS = -lm
 
