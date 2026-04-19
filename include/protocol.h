@@ -13,6 +13,7 @@
 #include <libgen.h>
 #include <math.h>
 #include <getopt.h>
+#include <wiringPi.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
